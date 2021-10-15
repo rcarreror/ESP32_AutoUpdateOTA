@@ -4,15 +4,15 @@
 #include <WiFiClientSecure.h>
 #include "cert.h"
 
-const char * ssid = "home_wifi";
-const char * password = "helloworld";
+const char * ssid = "WIFImovil";
+const char * password = "helloworld458";
 
 
 String FirmwareVer = {
-  "2.2"
+  "2.3"
 };
-#define URL_fw_Version "https://raw.githubusercontent.com/programmer131/ESP8266_ESP32_SelfUpdate/master/esp32_ota/bin_version.txt"
-#define URL_fw_Bin "https://raw.githubusercontent.com/programmer131/ESP8266_ESP32_SelfUpdate/master/esp32_ota/fw.bin"
+#define URL_fw_Version   "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/esp32_github_ota/bin_version.txt"
+#define URL_fw_Bin           "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/esp32_github_ota/fw.bin"
 
 #define LED_BUILTIN 2
 
@@ -27,6 +27,7 @@ unsigned long previousMillis = 0; // will store last time LED was updated
 unsigned long previousMillis_2 = 0;
 const long interval = 60000;
 const long mini_interval = 1000;
+
 void repeatedCall() {
   static int num=0;
   unsigned long currentMillis = millis();
@@ -173,8 +174,7 @@ int FirmwareVersionCheck(void) {
       Serial.printf("\nDevice already on latest firmware version:%s\n", FirmwareVer);
       return 0;
     } 
-    else 
-    {
+    else  {
       Serial.println(payload);
       Serial.println("New firmware detected");
       return 1;
