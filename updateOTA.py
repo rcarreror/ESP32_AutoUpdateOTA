@@ -3,7 +3,6 @@ import os
 import subprocess
 
 absPath = os.path.abspath(os.getcwd())+"\\esp32_github_ota"
-binPath = "esp32_github_ota/esp32_github_ota.ino.esp32.bin"
 
 if os.path.exists(absPath+"/esp32_github_ota.ino.esp32.bin"):
     os.remove(absPath+"/fw.bin")
@@ -13,6 +12,7 @@ if os.path.exists(absPath+"/esp32_github_ota.ino.esp32.bin"):
     versionFile = open(absPath+"/bin_version.txt","w")
     versionFile.write(str("{:.1f}".format(version)))
     versionFile.close()
-    os.system("actualizarOTA.bat V"+str("{:.1f}".format(version)))
+    os.system("comdGit.bat V"+str("{:.1f}".format(version)))
 else: 
-    print("--------------------No se ha encontrado el binario compilado\n--------------------En Arduino ve a: Programa>Exportar Binarios compilados")
+    print("--------------------No se ha encontrado el binario compilado\n"+
+    "--------------------En Arduino ve a: Programa>Exportar Binarios compilados")
