@@ -43,7 +43,7 @@ void repeatedCall() {
     Serial.println(FirmwareVer);
     if (WiFi.status() == WL_CONNECTED)
     {
-      Serial.println("wifi connected");
+      Serial.println("wifi connected...");
     }
     else
     {
