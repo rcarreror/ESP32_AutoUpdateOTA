@@ -9,7 +9,7 @@ const char * password = "helloworld458";
 
 
 String FirmwareVer = {
-  "1.5"
+  "1.6"
 };
 #define URL_fw_Version   "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/esp32_github_ota/bin_version.txt"
 #define URL_fw_Bin           "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/esp32_github_ota/fw.bin"
