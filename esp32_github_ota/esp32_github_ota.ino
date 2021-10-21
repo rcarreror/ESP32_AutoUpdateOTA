@@ -9,7 +9,7 @@ const char * password = "helloworld458";
 
 
 String FirmwareVer = {
-  "1.3"
+  "1.4"
 };
 #define URL_fw_Version   "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/esp32_github_ota/bin_version.txt"
 #define URL_fw_Bin           "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/esp32_github_ota/fw.bin"
@@ -43,7 +43,7 @@ void repeatedCall() {
     Serial.println(FirmwareVer);
     if (WiFi.status() == WL_CONNECTED)
     {
-      Serial.println("wifi conected...");
+      Serial.println("Conected...");
     }
     else
     {
