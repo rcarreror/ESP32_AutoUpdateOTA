@@ -4,20 +4,17 @@
 #include <WiFiClientSecure.h>
 #include "cert.h"
 
-const char * ssid = "WIFImovil";
-const char * password = "helloworld458";
+const char * ssid = "SBC";
+const char * password = "sbc$2020";
 
 
 String FirmwareVer = {
-  "1.1"
+  "1.0"
 };
 #define URL_fw_Version   "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/esp32_github_ota/bin_version.txt"
 #define URL_fw_Bin           "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/esp32_github_ota/fw.bin"
 
 #define LED_BUILTIN 2
-
-//#define URL_fw_Version "http://cade-make.000webhostapp.com/version.txt"
-//#define URL_fw_Bin "http://cade-make.000webhostapp.com/firmware.bin"
 
 void connect_wifi();
 void firmwareUpdate();
@@ -88,6 +85,7 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   connect_wifi();
 }
+
 void loop() {
   if (button_boot.pressed) { //to connect wifi via Android esp touch app
     Serial.println("Firmware update Starting..");
