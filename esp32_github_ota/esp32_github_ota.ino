@@ -9,7 +9,7 @@ const char * password = "sbc$2020";
 
 
 String FirmwareVer = {
-  "1.0"
+  "1.2"
 };
 #define URL_fw_Version   "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/esp32_github_ota/bin_version.txt"
 #define URL_fw_Bin           "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/esp32_github_ota/fw.bin"
@@ -50,6 +50,7 @@ void repeatedCall() {
       connect_wifi();
     }
   }
+  Serial.println("hola");
 }
 
 struct Button {
