@@ -21,6 +21,8 @@ ThingsBoardSized<128> tb(espClient);                                  // Inicial
 #include <Adafruit_MMA8451.h>
 #include <Adafruit_Sensor.h>
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
+int buzzer = 15;
+
 
 //NFC
 #include <PN532.h>
@@ -43,13 +45,13 @@ ESP32Time rtc;
 const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 3600;
 const int   daylightOffset_sec = 3600;
-String horaminPrev = "01:01";
 String horamin = "00:00";
 
 //DISPLAY
 #include <Adafruit_SSD1327.h>
 #include <Fonts/FreeSerifBold9pt7b.h>
 #include <Fonts/FreeSerifBold18pt7b.h>
+#include <Fonts/FreeMonoBold9pt7b.h>
 #define OLED_RESET -1
 Adafruit_SSD1327 display(128, 128, &Wire, OLED_RESET, 800000);
 int pastilla1 = 0; //QUITAR. numero de pastilla que se ha tomado
@@ -65,16 +67,20 @@ UniversalTelegramBot bot(BOT_TOKEN, secured_client);
 #include <HTTPClient.h>
 #include <HTTPUpdate.h>
 #include "cert.h"
-#define URL_fw_Version   "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/OmnitrixProyect/bin_version.txt"
-#define URL_fw_Bin           "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/OmnitrixProyect/fw.bin"
+#define URL_fw_Version   "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/OmniassistProyect/bin_version.txt"
+#define URL_fw_Bin           "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/OmniassistProyect/fw.bin"
 String FirmwareVer = {
-  "1.0"
+  "1.1"
 };
 
 
 
 //JSON
-
+#include <EEPROM.h>//https://github.com/espressif/arduino-esp32/tree/master/libraries/EEPROM
+#include <ArduinoJson.h>
+#include <StreamUtils.h>
+StaticJsonDocument<1536> confJSON;
+#define EEPROM_SIZE 1536
 
 //PERIODOS TAREAS
 const unsigned long periodNFC = 5000; //En milisegundos
@@ -90,29 +96,26 @@ void setup() {
   Serial.println();
   initDisplay();
   nfc.begin();
+  initAcc();
   initWiFi();
   initTB();
-  initAcc();
   initTime();
   secured_client.setCACert(TELEGRAM_CERTIFICATE_ROOT);
+  initConfig();
   display.fillRect(0, 0, 128, 128, SSD1327_BLACK); //Para no tener que limpiar toda la pantalla
 }
 
 void loop() {
+  displayTask();
   if (WiFi.status() != WL_CONNECTED) { //comprueba si seguimos conectados a la red Wifi
     Serial.println("Se ha desconectado la red WIFI.");
+    drawWifi(-100);
+    display.display();
     initWiFi();
   }
 
-  if (!tb.connected()) {  //comprueba si seguimos conectados con ThingsBoard
-    Serial.println("Se ha perdido la conexión con ThingsBoard");
-    initTB();
-  }
-
-  telegramTask();
-  seHaCaio();
+  accTask();
   nfcReader();
-  displayTask();
   autoUpdateTask();
   //tb.loop();
 }
@@ -123,35 +126,35 @@ void loop() {
 void nfcReader() {
   static unsigned long previousMillis = 0;
   if ((millis() - previousMillis) > periodNFC) {
-    Serial.println("\nScan a NFC tag\n");
     if (nfc.tagPresent()) {
       //A partir de aquí no escribir nada en el serial porque estropea el display
       char msg[] = " Ultima toma de pastilla: 18:34";
       sprintf(msg, "Ultima toma de pastilla: %s", horamin);
-      escribirFecha(msg);
       NfcTag tag = nfc.read();
-      if (tag.hasNdefMessage()) {
-        //TODO: Comprobar qué tarjeta es (y en consecuencia, qué pastilla), segun su tag con tag.getUidString() o tag.getUid()
-        if (tag.getUidString().equals("4C 30 FE 38")) {
-          tb.sendTelemetryString("pastilla1",  msg);
-          pastilla1++;
-        }
-        if (tag.getUidString().equals("9C 03 5F 6D")) {
-          tb.sendTelemetryString("pastilla2",  msg);
-          pastilla2++;
-        }
-        if (tag.getUidString().equals("73 8E 05 07")) {
-          tb.sendTelemetryString("pastilla3",  msg);
-          pastilla3++;
-        }
-      } else Serial.println("La tarjeta NFC no tiene mensaje");
+      String idTag = tag.getUidString();
+      escribirFecha(msg);
+      if (idTag.equals("4C 30 FE 38")) {
+        tb.sendTelemetryString("pastilla1",  msg);
+        pastilla1++;
+      }
+      else if (idTag.equals("EA C2 5D DB")) {
+        tb.sendTelemetryString("pastilla2",  msg);
+        pastilla2++;
+      }
+      else if (idTag.equals("73 8E 05 07")) {
+        tb.sendTelemetryString("pastilla3",  msg);
+        pastilla3++;
+      }
+      else startConfig();
+      Serial.println("Información enviada al ThingsBoard");
+
     }
     previousMillis += periodNFC;
   }
 }
 
 //------------------------------------TAREA 2------------------------------------
-void seHaCaio() {
+void accTask() {
   static unsigned long previousMillis = 0;
 
   if ((millis() - previousMillis) > periodFall) {
@@ -168,11 +171,12 @@ void seHaCaio() {
       long int za = event.acceleration.z;
       float at = sqrt(xa * xa + ya * ya + za * za);
 
-      if (at > 30) {
-        Serial.println("----------------------------------SE HA CAIDO MR PAKO----------------------------------");
+      if (at > 20) {
+        digitalWrite(buzzer, HIGH);
         Serial.println(at);
-      }
+      } else digitalWrite(buzzer, LOW);
     }
+
     previousMillis += periodFall;
   }
 }
@@ -182,45 +186,13 @@ void displayTask() {
   static unsigned long previousMillis = 0;
 
   if ((millis() - previousMillis) > periodDisplay) {
-    horaminPrev = horamin;
-    horamin = rtc.getTime();
-    if (horamin != horaminPrev) { //Actualiza cuando cambian la hora y al iniciar el programa
-      display.setTextSize(1);
-      display.setTextColor(SSD1327_WHITE);
-      display.setFont(&FreeSerifBold18pt7b);
-      display.setCursor(22, 30);
-      horaminPrev = horamin;
-      //display.clearDisplay();
-      display.fillRect(0, 0, 128, 40, SSD1327_BLACK); //Para no tener que limpiar toda la pantalla
-      display.print(horamin);
-      //display.display();
-    }
     drawBitmap();
     display.display();
     previousMillis += periodDisplay;
   }
 }
 
-
 //------------------------------------TAREA 4------------------------------------
-void telegramTask() {
-  static unsigned long previousMillis = 0;
-  if ((millis() - previousMillis) > periodBot) {
-    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
-
-    while (numNewMessages)
-    {
-      Serial.println("got response");
-      handleNewMessages(numNewMessages);
-      numNewMessages = bot.getUpdates(bot.last_message_received + 1);
-    }
-
-    previousMillis += periodBot;
-  }
-}
-
-
-//------------------------------------TAREA 5------------------------------------
 void autoUpdateTask() {
   static unsigned long previousMillis = 0;
   if ((millis() - previousMillis) > periodOTA) {

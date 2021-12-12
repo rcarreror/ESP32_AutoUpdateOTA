@@ -1,0 +1,81 @@
+{
+    "nombreCliente": "Paco Benancio Ramirez",
+    "nombreAsistente": "Francisco Ramirez",
+    "pastillas":[
+        {
+            "nombrePastilla": "Ameride",
+            "tipoPastilla": "antihipertensivo",
+            "frecuencia":8,
+            "dosisDiaria":[
+                {
+                    "IDtoma":11,
+                    "necesaria":true,
+                    "horaToma":"6:00",
+                    "ultimaToma": "06:05"
+                },
+                {
+                    "IDtoma":12,
+                    "necesaria":true, 
+                    "horaToma":"14:00",
+                    "ultimaToma": "14:10"
+                },
+                {
+                    "IDtoma":13,
+                    "necesaria":true,
+                    "horaToma":"22:00",
+                    "ultimaToma": "22:01"
+                }
+            ]
+        },
+        {
+            "nombrePastilla": "Veratran",
+            "tipoPastilla": "ansiolitico",
+            "frecuencia": 12,
+            "dosisDiaria":[
+                {
+                    "IDtoma":21,
+                    "necesaria":true,
+                    "horaToma":"6:00",
+                    "ultimaToma": "06:06"
+                },
+                {
+                    "IDtoma":22,
+                    "necesaria":true,
+                    "horaToma":"18:00",
+                    "ultimaToma": "18:05"
+                },
+                {
+                    "IDtoma":23,
+                    "necesaria":false,
+                    "horaToma":"",
+                    "ultimaToma": ""
+                }
+            ]
+        },
+        {
+            "nombrePastilla": "Tramadol",
+            "tipoPastilla": "analgesico",
+            "frecuencia": 24,
+            "dosisDiaria":[
+                {
+                    "IDtoma":31,
+                    "necesaria":true,
+                    "horaToma":"6:00",
+                    "ultimaToma": "06:03"
+                },
+                {
+                    "IDtoma":32,
+                    "necesaria":false,
+                    "horaToma":"",
+                    "ultimaToma": ""
+                },
+                {
+                    "IDtoma":33,
+                    "necesaria":false,
+                    "horaToma":"",
+                    "ultimaToma": ""
+                }
+            ]
+        }
+    ]
+}

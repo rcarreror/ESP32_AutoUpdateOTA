@@ -34,7 +34,8 @@ void initAcc() {
   if (!mma.begin()) {
     Serial.println("No se pudo iniciar el acelerómetro MMA8451");
   } else {
-    Serial.println("MMA8451 no encontrado");
+    Serial.println("MMA8451 encontrado");
+    pinMode(buzzer, OUTPUT);
     mma.setRange(MMA8451_RANGE_2_G);
     Serial.print("Range = "); Serial.print(2 << mma.getRange());
     Serial.println("G");
@@ -52,10 +53,28 @@ void initDisplay() {
   display.setTextSize(1);
   display.setTextColor(SSD1327_WHITE);
   display.setFont(&FreeSerifBold9pt7b);
-  display.setCursor(20, 20);
+  display.setCursor(15, 20);
   display.print("INICIANDO");
   display.drawBitmap(25, 25, logoInicio_bitmap , 80, 80, SSD1327_WHITE);
-  display.setCursor(20, 120);
-  display.print("OMNITRIX");
+  display.setCursor(10, 120);
+  display.print("OMNIASSIST");
   display.display();
+}
+
+void initConfig() {
+  EEPROM.begin(EEPROM_SIZE);
+  EepromStream eepromStream(0, 1536);
+//      for (int i =0 ; i < 1536; i++) {
+//        EEPROM.write(i, 0);
+//      }
+//      EEPROM.commit();
+//      delay(500);
+  DeserializationError error = deserializeJson(confJSON, eepromStream);
+  if (error) {
+    Serial.println("No hay JSON de configuracion");
+    createEmptyJson();
+  }
+  if (!confJSON["configured"]) {
+    startConfig();
+  }
 }
