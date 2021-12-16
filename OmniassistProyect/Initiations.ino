@@ -63,7 +63,7 @@ void initDisplay() {
 
 void initConfig() {
   EEPROM.begin(EEPROM_SIZE);
-  EepromStream eepromStream(0, 1536);
+  //EepromStream eepromStream(0, 1536);
 //      for (int i =0 ; i < 1536; i++) {
 //        EEPROM.write(i, 0);
 //      }

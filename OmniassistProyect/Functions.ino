@@ -1,9 +1,8 @@
 void drawBitmap() {
-  horamin = rtc.getTime();
   display.setTextSize(1);
   display.setTextColor(SSD1327_WHITE);
   display.setFont(&FreeSerifBold18pt7b);
-  display.setCursor(22, 30);
+  display.setCursor(20, 30);
   //display.clearDisplay();
   display.fillRect(0, 0, 128, 40, SSD1327_BLACK); //Para no tener que limpiar toda la pantalla
   display.print(horamin);
@@ -12,9 +11,13 @@ void drawBitmap() {
   display.setFont(&FreeMonoBold9pt7b);
 
   drawWifi(WiFi.RSSI());
+  //display.drawBitmap(109, 0, dataBaseNo_bitmap, 19, 19, SSD1327_WHITE);
 
-  for (int i = 0; i < 3; i++) { //TODO: Cambiar i<3 por el número de pastillas diferentes que se tiene que tomar
-    if (getTomas(i + 1) != 3) {
+
+  for (int i = 0; i < 3; i++) {
+    int tomasNecesarias = confJSON["pastillas"][i]["tomasNecesarias"].size();
+    int tomasRealizadas = confJSON["pastillas"][i]["ultimasTomas"].size();
+    if (tomasRealizadas < tomasNecesarias) {
       display.setTextColor(SSD1327_WHITE);
       display.drawBitmap(10 + (i * 42), 46, pill_bitmap, 23, 52, SSD1327_WHITE);
     }
@@ -28,9 +31,9 @@ void drawBitmap() {
     if (i == 1) display.print("B");
     if (i == 2) display.print("C");
 
-    for (int j = 0; j < 3; j++) { //TODO: Cambiar i<3 por el número de tomas por pastilla
+    for (int j = 0; j < tomasNecesarias; j++) {
       display.drawBitmap(4 + (i * 42) + (13 * j), 110, square_bitmap, 11, 11, SSD1327_WHITE);
-      if (getTomas(i + 1) >= j + 1) {
+      if (tomasRealizadas >= j + 1) {
         display.drawBitmap(4 + (i * 42) + (13 * j), 110, cross_bitmap, 11, 11, SSD1327_WHITE);
       }
     }
@@ -38,40 +41,12 @@ void drawBitmap() {
 }
 
 void drawWifi(int strength) {
-  display.fillRect(161, 0 , 19, 14, SSD1327_BLACK);
-  if (strength == -100)  display.drawBitmap(161, 0, noWifi, 19, 14, SSD1327_WHITE);
-  else if (strength <= -60) display.drawBitmap(161, 0, wifi1, 19, 14, SSD1327_WHITE);
-  else if (strength <= -50) display.drawBitmap(161, 0, wifi2, 19, 14, SSD1327_WHITE);
-  else if (strength <= -40) display.drawBitmap(161, 0, wifi3, 19, 14, SSD1327_WHITE);
-  else if (strength > -40) display.drawBitmap(161, 0, wifi4, 19, 14, SSD1327_WHITE);
-}
-
-int getTomas(int numPastilla) {
-  if (numPastilla == 1) return pastilla1;
-  if (numPastilla == 2) return pastilla2;
-  if (numPastilla == 3) return pastilla3;
-}
-
-void handleNewMessages(int numNewMessages) {
-  Serial.println("handleNewMessages");
-  Serial.println(String(numNewMessages));
-
-  for (int i = 0; i < numNewMessages; i++)
-  {
-    String chat_id = bot.messages[i].chat_id;
-    String text = bot.messages[i].text;
-
-    String from_name = bot.messages[i].from_name;
-    if (from_name == "")
-      from_name = "Guest";
-
-    if (text == "/start") {
-      String welcome = "Welcome to Universal Arduino Telegram Bot library, " + from_name + ".\n";
-      welcome += "Vamos a comenzar a configurar el Omnitrix.\n\n";
-      welcome += "/send_test_action : \n";
-      bot.sendMessage(chat_id, welcome);
-    }
-  }
+  display.fillRect(0, 0 , 19, 14, SSD1327_BLACK);
+  if (strength == -100)  display.drawBitmap(0, 0, noWifi, 19, 14, SSD1327_WHITE);
+  else if (strength <= -60) display.drawBitmap(0, 0, wifi1, 19, 14, SSD1327_WHITE);
+  else if (strength <= -50) display.drawBitmap(0, 0, wifi2, 19, 14, SSD1327_WHITE);
+  else if (strength <= -40) display.drawBitmap(0, 0, wifi3, 19, 14, SSD1327_WHITE);
+  else if (strength > -40) display.drawBitmap(0, 0, wifi4, 19, 14, SSD1327_WHITE);
 }
 
 //Escribe la fecha y hora actual en la tarjeta NFC
@@ -157,31 +132,89 @@ int FirmwareVersionCheck(void) {
   return 0;
 }
 
+void pillsTime(int h, int m) {
+  int numPastillas = 3;  //confJSON["pastillas"].size();
+  if (today != confJSON["diaActual"] ) { //Si ha cambiado el día, se reinician todas las tomas de pastillas
+    confJSON["diaActual"] = today;
+    for (int i = 0; i < numPastillas; i++) {
+      while ( confJSON["pastillas"][i]["ultimasTomas"].size() > 0) {
+        confJSON["pastillas"][i]["ultimasTomas"].remove(0);
+      }
+    }
+  }
+  for (int i = 0; i < numPastillas; i++) {
+    if (confJSON["pastillas"][i]["ultimasTomas"].size() != 0) { //comprobamos si se ha tomado alguna pastilla
+      if (confJSON["pastillas"][i]["tomasNecesarias"][0] <= h && m > 30) {
+
+      }
+    }
+  }
+}
+
+
+//revisa si hay actualizaciones de firmware e inicia la configuración por medio de un bot de Telegam con el cliente
 void startConfig() {
   display.fillRect(0, 0, 128, 128, SSD1327_BLACK); //Para no tener que limpiar toda la pantalla
   display.drawBitmap(25, 25, config_Bitmap , 80, 80, SSD1327_WHITE);
   display.display();
-  EepromStream eepromStream(0, 1536);
+  if (FirmwareVersionCheck()) {
+    firmwareUpdate();
+  }
+  
   confJSON["configured"] = false;
   while (!confJSON["configured"]) {
-    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+    bot.getUpdates(bot.last_message_received + 1);
     if (bot.messages[0].text == "/start") {
-      numNewMessages = 0;
       String chat_id = bot.messages[0].chat_id;
       String from_name = bot.messages[0].from_name;
       if (from_name == "")
         from_name = "Guest";
-      String keyboardJson = "[[\"Borrar configuracion y crear una nueva\", \"Crear configuracion de prueba\",  \"Cancelar\"]]";
-      bot.sendMessageWithReplyKeyboard(chat_id, "¿Cómo quiere configurar su dispositivo?", "", keyboardJson, true);
-      while (!numNewMessages) {
-        numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+      String keyboardJson = "[[\"Borrar configuracion y crear una nueva\"],[ \"Crear configuracion de prueba\"], [\"Cancelar\"]]";
+      bot.sendMessageWithReplyKeyboard(chat_id, "¿Cómo quiere configurar su dispositivo?", "", keyboardJson, false, true, false);
+      while (!bot.getUpdates(bot.last_message_received + 1)) {
+        ;
       }
       String text = bot.messages[0].text;
       if (text == "Borrar configuracion y crear una nueva") {
         bot.sendMessage(chat_id, "De acuerdo, " + from_name + ", comencemos a configurar el sistema.");
         createEmptyJson();
+        confJSON["idAsistente"] = chat_id;
+        bot.sendMessage( confJSON["idAsistente"] , "Escriba el nombre y apellidos del cliente (persona que toma llevará el sistema)");
+        while (!bot.getUpdates(bot.last_message_received + 1)) {
+          ;
+        }
+        text = bot.messages[0].text;
+        confJSON["nombreCliente"] = text;
+        bot.sendMessage( confJSON["idAsistente"] , "Escriba el nombre y apellidos del asistente");
+        while (!bot.getUpdates(bot.last_message_received + 1)) {
+          ;
+        }
+        text = bot.messages[0].text;
+        confJSON["nombreAsistente"] = text;
+        bot.sendMessage( confJSON["idAsistente"] , "A continuación empezaremos a configurar los medicamentos...");
+        for (int i = 0; i < 3; i++) {
+          bot.sendMessage( confJSON["idAsistente"] , "Escriba el nombre del mediacamento " + String(i+1));
+          while (!bot.getUpdates(bot.last_message_received + 1)) {
+            ;
+          }
+          text = bot.messages[0].text;
+          confJSON["pastillas"][i]["nombrePastilla"] = text;
+          bot.sendMessage( confJSON["idAsistente"] , "Escriba el tipo de mediacamento (antihipertensivo, analgésico, ansiolítico...)");
+          while (!bot.getUpdates(bot.last_message_received + 1)) {
+            ;
+          }
+          text = bot.messages[0].text;
+          confJSON["pastillas"][i]["tipoPastilla"] = text;
+          bot.sendMessage( confJSON["idAsistente"] , "Escriba la frecuencia (cada 8, 12 ó 24 horas)");
+          while (!bot.getUpdates(bot.last_message_received + 1)) {
+            ;
+          }
+          text = bot.messages[0].text;
+          confJSON["pastillas"][i]["frecuencia"] = text.toInt();
+        }
+        confJSON["configured"] = true;
       }
-      else if (text == "Crear configuracion de prueba")  createTestJson();
+      else if (text == "Crear configuracion de prueba") createTestJson();
       else if (text == "Cancelar")  confJSON["configured"] = true;
     }
   }

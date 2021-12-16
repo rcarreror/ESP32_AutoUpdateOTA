@@ -1,6 +1,7 @@
 //GENERAL
 #include <Wire.h>
 #define SERIAL_DEBUG_BAUD   115200
+int buzzer = 15;
 
 //WIFI
 #include <WiFi.h>
@@ -15,13 +16,15 @@ WiFiClientSecure secured_client;
 #define TOKEN "BCjVM97zxPlb0BFlfcbR"                             // Access token obtenido del dispositivo creado
 #define THINGSBOARD_SERVER  "demo.thingsboard.io"     // Utilizaremos el servidor gratuito de ThingsBoard
 WiFiClient espClient;                                                             // Inicialiación del cliente de ThingsBoard
-ThingsBoardSized<128> tb(espClient);                                  // Inicializar instancia de ThingsBoard redimensionando el buffer (para poder mandar mensajes más largos)
+ThingsBoard tb(espClient);
+//ThingsBoardSized<128> tb(espClient);                                // Inicializar instancia de ThingsBoard redimensionando el buffer (para poder mandar mensajes más largos)
 
 //ACELERÓMETRO
 #include <Adafruit_MMA8451.h>
 #include <Adafruit_Sensor.h>
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
-int buzzer = 15;
+int numAcc = 0;
+float movingAvg = 0;
 
 
 //NFC
@@ -46,6 +49,7 @@ const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 3600;
 const int   daylightOffset_sec = 3600;
 String horamin = "00:00";
+int today = 1;
 
 //DISPLAY
 #include <Adafruit_SSD1327.h>
@@ -54,9 +58,6 @@ String horamin = "00:00";
 #include <Fonts/FreeMonoBold9pt7b.h>
 #define OLED_RESET -1
 Adafruit_SSD1327 display(128, 128, &Wire, OLED_RESET, 800000);
-int pastilla1 = 0; //QUITAR. numero de pastilla que se ha tomado
-int pastilla2 = 0; //QUITAR. numero de pastilla que se ha tomado
-int pastilla3 = 0; //QUITAR. numero de pastilla que se ha tomado
 
 //TELEGRAM BOT
 #include <UniversalTelegramBot.h>
@@ -81,13 +82,15 @@ String FirmwareVer = {
 #include <StreamUtils.h>
 StaticJsonDocument<1536> confJSON;
 #define EEPROM_SIZE 1536
+EepromStream eepromStream(0, 1536);
 
 //PERIODOS TAREAS
-const unsigned long periodNFC = 5000; //En milisegundos
-const unsigned long periodFall = 200; //En milisegundos
+const unsigned long periodNFC = 2000; //En milisegundos
+const unsigned long periodAcc = 200; //En milisegundos
 const unsigned long periodDisplay = 1000; //En milisegundos
 const unsigned long periodBot  = 1000;
-const unsigned long periodOTA  = 60000;
+const unsigned long periodOTA  = 1800000;
+const unsigned long periodTimeControl = 1000;
 
 
 
@@ -106,7 +109,6 @@ void setup() {
 }
 
 void loop() {
-  displayTask();
   if (WiFi.status() != WL_CONNECTED) { //comprueba si seguimos conectados a la red Wifi
     Serial.println("Se ha desconectado la red WIFI.");
     drawWifi(-100);
@@ -114,18 +116,24 @@ void loop() {
     initWiFi();
   }
 
+  timeControlTask();
+  displayTask();
   accTask();
   nfcReader();
-  autoUpdateTask();
-  //tb.loop();
+  //autoUpdateTask();
 }
 
-//------------------------------------TAREA 1------------------------------------
-//Comprueba si hay una tarjeta NFC, en el caso de que la haya, escribe
-//en ella la fecha y hora actual y la envía como telemetría a ThingsBoard
+/*------------------------------------TAREA 1------------------------------------
+   Comprueba si hay una tarjeta NFC, en el caso de que la haya, escribe
+   en ella la fecha y hora actual y la envía como telemetría a ThingsBoard
+   Si no se trata de ninguna de las tarjetas registradas, se considerara
+   que se quiere configurar el sistema, iniciando la función startConfig(),
+   a cual detiene todas las tareas.
+*/
 void nfcReader() {
   static unsigned long previousMillis = 0;
   if ((millis() - previousMillis) > periodNFC) {
+    bool tagRegistered = false;
     if (nfc.tagPresent()) {
       //A partir de aquí no escribir nada en el serial porque estropea el display
       char msg[] = " Ultima toma de pastilla: 18:34";
@@ -134,20 +142,26 @@ void nfcReader() {
       String idTag = tag.getUidString();
       escribirFecha(msg);
       if (idTag.equals("4C 30 FE 38")) {
-        tb.sendTelemetryString("pastilla1",  msg);
-        pastilla1++;
+        tagRegistered = true;
+        //mensaje Telegram
+        if ( confJSON["pastillas"][0]["ultimasTomas"].size() < 3) confJSON["pastillas"][0]["ultimasTomas"].add(horamin);
       }
-      else if (idTag.equals("EA C2 5D DB")) {
-        tb.sendTelemetryString("pastilla2",  msg);
-        pastilla2++;
+      if (idTag.equals("EA C2 5D DB")) {
+        tagRegistered = true;
+        //mensaje Telegram
+        if(confJSON["pastillas"][1]["ultimasTomas"].size() < 3) confJSON["pastillas"][1]["ultimasTomas"].add(horamin);
       }
-      else if (idTag.equals("73 8E 05 07")) {
-        tb.sendTelemetryString("pastilla3",  msg);
-        pastilla3++;
+      if (idTag.equals("73 8E 05 07")) {
+        tagRegistered = true;
+        //mensaje Telegram
+        if(confJSON["pastillas"][2]["ultimasTomas"].size() < 3) confJSON["pastillas"][2]["ultimasTomas"].add(horamin);
       }
-      else startConfig();
-      Serial.println("Información enviada al ThingsBoard");
-
+      if (!tagRegistered) startConfig();
+      else {
+        serializeJson(confJSON, eepromStream);
+        eepromStream.flush();
+        Serial.println("Información guardada en memoria");
+      }
     }
     previousMillis += periodNFC;
   }
@@ -157,7 +171,7 @@ void nfcReader() {
 void accTask() {
   static unsigned long previousMillis = 0;
 
-  if ((millis() - previousMillis) > periodFall) {
+  if ((millis() - previousMillis) > periodAcc) {
     if (! mma.begin()) {
       return;
     } else {
@@ -168,23 +182,25 @@ void accTask() {
 
       long int xa = event.acceleration.x;
       long int ya = event.acceleration.y;
-      long int za = event.acceleration.z;
-      float at = sqrt(xa * xa + ya * ya + za * za);
-
-      if (at > 20) {
+      long int za = event.acceleration.z-9;
+      float at = sqrt(xa*xa + ya*ya + za*za);
+      movingAvg = (movingAvg + at) / 2;
+      if (at > 12) {
         digitalWrite(buzzer, HIGH);
-        Serial.println(at);
       } else digitalWrite(buzzer, LOW);
+      if (numAcc == 50) {
+        numAcc = 0;
+        tb.sendTelemetryFloat("movingAvg", movingAvg);
+      }
     }
-
-    previousMillis += periodFall;
+    numAcc++;
+    previousMillis += periodAcc;
   }
 }
 
 //------------------------------------TAREA 3------------------------------------
 void displayTask() {
   static unsigned long previousMillis = 0;
-
   if ((millis() - previousMillis) > periodDisplay) {
     drawBitmap();
     display.display();
@@ -192,7 +208,10 @@ void displayTask() {
   }
 }
 
-//------------------------------------TAREA 4------------------------------------
+/*------------------------------------TAREA 4------------------------------------
+   Cada media hora revisa si hay actualizaciones, revisando el archivo de
+   la versión en GitHub
+*/
 void autoUpdateTask() {
   static unsigned long previousMillis = 0;
   if ((millis() - previousMillis) > periodOTA) {
@@ -203,4 +222,19 @@ void autoUpdateTask() {
     }
     previousMillis += periodOTA;
   }
+}
+
+/*------------------------------------TAREA 5------------------------------------
+
+*/
+void timeControlTask() {
+  static unsigned long previousMillis = 0;
+  if ((millis() - previousMillis) > periodTimeControl) {
+    int h = rtc.getHour();
+    int m = rtc.getMinute();
+    today = rtc.getDay();
+    horamin = rtc.getTime();
+    pillsTime(h, m);
+  }
+  previousMillis += periodTimeControl;
 }
