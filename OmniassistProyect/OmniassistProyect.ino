@@ -71,7 +71,7 @@ UniversalTelegramBot bot(BOT_TOKEN, secured_client);
 #define URL_fw_Version   "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/OmniassistProyect/bin_version.txt"
 #define URL_fw_Bin           "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/OmniassistProyect/fw.bin"
 String FirmwareVer = {
-  "1.1"
+  "1.2"
 };
 
 
