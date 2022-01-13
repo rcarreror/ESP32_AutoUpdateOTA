@@ -120,7 +120,7 @@ void loop() {
   displayTask();
   accTask();
   nfcReader();
-  //autoUpdateTask();
+  autoUpdateTask();
 }
 
 /*------------------------------------TAREA 1------------------------------------
