@@ -15,7 +15,7 @@ void drawBitmap() {
 
 
   for (int i = 0; i < 3; i++) {
-    int tomasNecesarias = confJSON["pastillas"][i]["tomasNecesarias"].size();
+    int tomasNecesarias = confJSON["pastilla"][i]["tomasNecesarias"].size(); 
     int tomasRealizadas = confJSON["pastillas"][i]["ultimasTomas"].size();
     if (tomasRealizadas < tomasNecesarias) {
       display.setTextColor(SSD1327_WHITE);
@@ -142,19 +142,20 @@ void pillsTime(int h, int m) {
       }
     }
   }
-  for (int i = 0; i < numPastillas; i++) {
-    if (confJSON["pastillas"][i]["ultimasTomas"].size() != 0) { //comprobamos si se ha tomado alguna pastilla
-      if (confJSON["pastillas"][i]["tomasNecesarias"][0] <= h && m > 30) {
-        if((millis() - lastWarning)>30000 || lastWarning==0){ 
-               const char* nombrePastilla = confJSON["pastillas"][i]["nombrePastilla"];
-               String aviso= "AVISO: El usuario no se ha tomado la pastilla "+String(nombrePastilla);
-              digitalWrite(buzzer, HIGH);
-              delay(1000);
-              digitalWrite(buzzer, LOW);
-              bot.sendMessage( confJSON["idAsistente"] , aviso);
+  if ((millis() - lastWarning) > 300000 || lastWarning == 0) {
+    for (int i = 0; i < numPastillas; i++) {
+      for (int j = 0; j < confJSON["pastilla"][i]["tomasNecesarias"].size(); j++) {
+        if (confJSON["pastillas"][i]["tomasNecesarias"][j] <= h && m > 30) {
+          const char* nombrePastilla = confJSON["pastillas"][i]["nombrePastilla"];
+          String aviso = "AVISO: El usuario no se ha tomado la pastilla " + String(nombrePastilla);
+          digitalWrite(buzzer, HIGH);
+          delay(1000);
+          digitalWrite(buzzer, LOW);
+          bot.sendMessage( confJSON["idAsistente"] , aviso);
         }
       }
     }
+    lastWarning = millis();
   }
 }
 
@@ -167,7 +168,7 @@ void startConfig() {
   if (FirmwareVersionCheck()) {
     firmwareUpdate();
   }
-  
+
   confJSON["configured"] = false;
   while (!confJSON["configured"]) {
     bot.getUpdates(bot.last_message_received + 1);
@@ -200,7 +201,7 @@ void startConfig() {
         confJSON["nombreAsistente"] = text;
         bot.sendMessage( confJSON["idAsistente"] , "A continuación empezaremos a configurar los medicamentos...");
         for (int i = 0; i < 3; i++) {
-          bot.sendMessage( confJSON["idAsistente"] , "Escriba el nombre del mediacamento " + String(i+1));
+          bot.sendMessage( confJSON["idAsistente"] , "Escriba el nombre del mediacamento " + String(i + 1));
           while (!bot.getUpdates(bot.last_message_received + 1)) {
             ;
           }

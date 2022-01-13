@@ -50,7 +50,7 @@ const long  gmtOffset_sec = 3600;
 const int   daylightOffset_sec = 3600;
 String horamin = "00:00";
 int today = 1;
-const unsigned long lastWarning = 0;
+unsigned long lastWarning = 0;
 
 //DISPLAY
 #include <Adafruit_SSD1327.h>
