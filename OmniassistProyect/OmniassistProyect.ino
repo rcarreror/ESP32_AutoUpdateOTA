@@ -50,6 +50,7 @@ const long  gmtOffset_sec = 3600;
 const int   daylightOffset_sec = 3600;
 String horamin = "00:00";
 int today = 1;
+const unsigned long lastWarning = 0;
 
 //DISPLAY
 #include <Adafruit_SSD1327.h>
@@ -114,6 +115,7 @@ void loop() {
     drawWifi(-100);
     display.display();
     initWiFi();
+    initTB();
   }
 
   timeControlTask();
@@ -186,8 +188,8 @@ void accTask() {
       float at = sqrt(xa*xa + ya*ya + za*za);
       movingAvg = (movingAvg + at) / 2;
       if (at > 12) {
-        digitalWrite(buzzer, HIGH);
-      } else digitalWrite(buzzer, LOW);
+        
+      } else 
       if (numAcc == 50) {
         numAcc = 0;
         tb.sendTelemetryFloat("movingAvg", movingAvg);

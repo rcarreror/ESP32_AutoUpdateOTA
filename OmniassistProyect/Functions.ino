@@ -133,7 +133,7 @@ int FirmwareVersionCheck(void) {
 }
 
 void pillsTime(int h, int m) {
-  int numPastillas = 3;  //confJSON["pastillas"].size();
+  int numPastillas = confJSON["pastillas"].size();
   if (today != confJSON["diaActual"] ) { //Si ha cambiado el día, se reinician todas las tomas de pastillas
     confJSON["diaActual"] = today;
     for (int i = 0; i < numPastillas; i++) {
@@ -145,7 +145,14 @@ void pillsTime(int h, int m) {
   for (int i = 0; i < numPastillas; i++) {
     if (confJSON["pastillas"][i]["ultimasTomas"].size() != 0) { //comprobamos si se ha tomado alguna pastilla
       if (confJSON["pastillas"][i]["tomasNecesarias"][0] <= h && m > 30) {
-
+        if((millis() - lastWarning)>30000 || lastWarning==0){ 
+               const char* nombrePastilla = confJSON["pastillas"][i]["nombrePastilla"];
+               String aviso= "AVISO: El usuario no se ha tomado la pastilla "+String(nombrePastilla);
+              digitalWrite(buzzer, HIGH);
+              delay(1000);
+              digitalWrite(buzzer, LOW);
+              bot.sendMessage( confJSON["idAsistente"] , aviso);
+        }
       }
     }
   }
