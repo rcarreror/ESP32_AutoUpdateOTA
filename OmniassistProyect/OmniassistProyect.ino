@@ -72,7 +72,7 @@ UniversalTelegramBot bot(BOT_TOKEN, secured_client);
 #define URL_fw_Version   "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/OmniassistProyect/bin_version.txt"
 #define URL_fw_Bin           "https://raw.githubusercontent.com/rcarreror/ESP32_AutoUpdateOTA/main/OmniassistProyect/fw.bin"
 String FirmwareVer = {
-  "1.2"
+  "1.4"
 };
 
 
@@ -188,8 +188,8 @@ void accTask() {
       float at = sqrt(xa*xa + ya*ya + za*za);
       movingAvg = (movingAvg + at) / 2;
       if (at > 12) {
-        
-      } else 
+        bot.sendMessage( confJSON["idAsistente"] , "ATENCIÓN: Posible caida del usuario, por favor contacte con él o avise a los servicios médicos");
+      }
       if (numAcc == 50) {
         numAcc = 0;
         tb.sendTelemetryFloat("movingAvg", movingAvg);
